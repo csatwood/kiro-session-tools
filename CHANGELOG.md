@@ -4,6 +4,22 @@ All notable changes to this project, most recent first.
 
 ## Unreleased
 
+### Relocate sessions after a repo move
+- `kiro_relocate.py`: new module to re-index Kiro sessions when a repository
+  directory is moved on disk. Kiro keys its session store by
+  `sha256(absolute_cwd)[:16]`, so a moved repo's sessions silently drop out of
+  `ks` / `--list-sessions` from the new path (the data stays intact and
+  resumable by id). Relocate moves each `sess_*`/`cli_*` dir to the new-path
+  hash, rewrites `workspacePaths`/`rootPaths` in `session.json` atomically, and
+  repoints the `session-index` entries. Safe by design: `--dry-run` previews
+  the plan (including any clobber conflict) and changes nothing; a real run
+  refuses to clobber an existing target (exit 2, not a silent success); it
+  refuses when `--new` equals or sits inside `--old`, and refuses a relative
+  `--old`/`--new` (Kiro keys by absolute cwd). `--remove-old` is gated and
+  derives its cleanup set from sessions that actually moved. Tests cover the
+  hash, the path rewrite, the index repoint, clobber-refusal, and old-entry
+  cleanup on disposable fixtures (`KIRO_STORE_ROOT`).
+
 ### Kiro-aligned palette
 - `kiro_launch.py` (`ks`): re-tuned the color palette to Kiro CLI's brand
   family, so the launcher reads as part of the same tool set. Group
