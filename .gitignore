@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.DS_Store
+# adversarial-review plants its fetch receipt here on the --since path; git must
+# not see it, or the untracked-file sweep would pull it into the diff.
+.claude/review-scratch/

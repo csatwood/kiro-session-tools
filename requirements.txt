@@ -1,0 +1,6 @@
+# kiro_session_tools has NO third-party runtime dependencies: it uses only the
+# Python standard library (curses, argparse, json, subprocess, dataclasses).
+# Requires Python 3.10+ and kiro-cli on PATH.
+#
+# Development/test uses pytest, which is the one optional tool:
+# pytest
