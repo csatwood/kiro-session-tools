@@ -3,6 +3,14 @@
 Tooling to make Kiro sessions findable and resumable by a label you choose,
 over the model-generated auto-titles Kiro's native `--sessions` dashboard shows.
 
+## Compatibility
+
+Verified against Kiro CLI 2.25.0. This tooling reads Kiro's session store
+layout (sessions keyed by `sha256(absolute_cwd)[:16]`), which is observed
+behavior, not a documented, stable API. A future Kiro release could change it
+and break the store-level features (notably `kiro_relocate.py`). The label
+layer and picker degrade gracefully; relocate is the most layout-dependent.
+
 ## Components
 
 - **`kiro_sessions.py`**: the label layer. It attaches a memorable label to a
@@ -40,6 +48,27 @@ without color support renders in the plain monochrome style.
 
 Labels live under `~/.kiro/session-labels` by default (one JSON file per
 session). Override with `KIRO_SESSION_LABELS_PATH`.
+
+## Relocating sessions after a repo move
+
+Kiro keys its session store by `sha256(absolute_cwd)[:16]`. If you move a
+project directory on disk, its sessions keep existing but stop showing up in
+`ks` / `kiro-cli --list-sessions` from the new path (they are still resumable
+by id). `kiro_relocate.py` re-indexes them to the new path:
+
+```sh
+python3 kiro_relocate.py --old /old/path/to/repo --new /new/path/to/repo --dry-run
+python3 kiro_relocate.py --old /old/path/to/repo --new /new/path/to/repo
+```
+
+**Back up `~/.kiro` before a real run.** This edits Kiro's own session store.
+It is guarded (dry-run by default, refuses to clobber an existing target,
+refuses a relative path or a `--new` inside `--old`, writes atomically), but a
+backup is the right habit before any in-place store edit:
+
+```sh
+cp -a ~/.kiro/sessions ~/.kiro/sessions.bak && cp -a ~/.kiro/session-index ~/.kiro/session-index.bak
+```
 
 ## Install / use
 
