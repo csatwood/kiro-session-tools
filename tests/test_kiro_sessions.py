@@ -102,6 +102,20 @@ class LabelStoreTests(unittest.TestCase):
         self.assertFalse(ks.remove_label("sess_a", self.dir))
         self.assertIsNone(ks.get_label("sess_a", ks.load_labels(self.dir)))
 
+    def test_cmd_label_without_label_or_remove_is_rejected_and_writes_nothing(self):
+        """`label <id>` with neither a label nor --remove is a usage error; it
+        must not create a file or print a success line."""
+        args = types.SimpleNamespace(session_id="sess_a", label=None, remove=False)
+        old_dir = ks.labels_dir
+        ks.labels_dir = lambda: self.dir
+        try:
+            with self.assertRaises(SystemExit) as cm:
+                ks.cmd_label(args)
+        finally:
+            ks.labels_dir = old_dir
+        self.assertIn("a label is required", str(cm.exception))
+        self.assertFalse(self.dir.exists())
+
     def test_one_corrupt_file_is_skipped_not_fatal(self):
         """A single unreadable file in a synced directory must not blind the
         reader to every other label."""
