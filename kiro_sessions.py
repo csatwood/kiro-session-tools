@@ -321,7 +321,13 @@ def list_sessions(all_cwds: bool, runner=None) -> list[dict]:
                 _cmd, capture_output=True, text=True, timeout=_t
             )
 
-    proc = runner()
+    try:
+        proc = runner()
+    except subprocess.TimeoutExpired as exc:
+        raise SystemExit(
+            f"error: `kiro-cli chat --list-sessions` did not finish within {exc.timeout:g}s. "
+            "Raise KIRO_SESSIONS_TIMEOUT if your session store is very large."
+        ) from exc
     if proc.returncode != 0:
         raise SystemExit(
             f"error: `kiro-cli chat --list-sessions` exited {proc.returncode}: "
