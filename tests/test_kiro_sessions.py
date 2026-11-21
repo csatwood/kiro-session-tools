@@ -8,6 +8,7 @@ on the developer's own Kiro session store.
 import importlib.util
 import json
 import os
+import subprocess
 import sys as _sys
 import types
 import unittest
@@ -273,6 +274,15 @@ class LabelStoreTests(unittest.TestCase):
 
 
 class ListSessionsTests(unittest.TestCase):
+    def test_listing_timeout_reports_the_deadline_and_override(self):
+        def runner():
+            raise subprocess.TimeoutExpired(["kiro-cli"], 60)
+
+        with self.assertRaisesRegex(
+            SystemExit, r"did not finish within 60s\..*KIRO_SESSIONS_TIMEOUT"
+        ):
+            ks.list_sessions(all_cwds=False, runner=runner)
+
     def test_flattens_envelopes_and_tags_each_session_with_its_cwd(self):
         out = json.dumps([
             _envelope("/work/a", [_session("sess_1")]),
