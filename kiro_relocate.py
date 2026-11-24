@@ -58,8 +58,11 @@ def plan(old_root: str, new_root: str):
             d = json.loads(sj.read_text())
         except Exception:
             continue
-        wp = (d.get("workspacePaths") or d.get("rootPaths") or [""])[0]
-        if not wp:
+        if not isinstance(d, dict):
+            continue
+        paths = d.get("workspacePaths") or d.get("rootPaths") or [""]
+        wp = paths[0] if isinstance(paths, list) else ""
+        if not wp or not isinstance(wp, str):
             continue
         if wp == old_root or wp.startswith(old_root + "/"):
             new_wp = new_root + wp[len(old_root):]

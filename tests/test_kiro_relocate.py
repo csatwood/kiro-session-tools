@@ -317,3 +317,60 @@ def test_refuses_relative_paths(tmp_path, monkeypatch, capsys):
 
     # the session was never moved
     assert (tmp_path / "sessions" / kr.cwd_hash("/work/repoL") / "sess_rel").is_dir()
+
+
+def test_plan_skips_unreadable_and_pathless_session_json(tmp_path, monkeypatch):
+    """One corrupt, wrong-shaped, or workspace-less session.json must not stop
+    plan() from finding the healthy sessions next to it."""
+    monkeypatch.setenv("KIRO_STORE_ROOT", str(tmp_path))
+    old = "/work/repoP"
+    _mk_session(tmp_path, old, "sess_ok", 1000)
+    bad = {
+        "sess_garbage": "{not json",
+        "sess_list": "[]",
+        "sess_null": "null",
+        "sess_nopaths": json.dumps({"id": "x"}),
+        "sess_emptywp": json.dumps({"workspacePaths": [], "rootPaths": []}),
+        "sess_blankwp": json.dumps({"workspacePaths": [""]}),
+        "sess_intwp": json.dumps({"workspacePaths": [123]}),
+    }
+    for name, text in bad.items():
+        d = tmp_path / "sessions" / "deadbeefdeadbeef" / name
+        d.mkdir(parents=True)
+        (d / "session.json").write_text(text)
+    moves = kr.plan(old, "/work/moved/repoP")
+    assert [m[0].name for m in moves] == ["sess_ok"]
+
+
+def test_old_index_at_skips_corrupt_lines_and_other_sessions(tmp_path, monkeypatch):
+    """A torn/garbage index line is ignored; only matching sessions count, and
+    a missing index file yields 0."""
+    monkeypatch.setenv("KIRO_STORE_ROOT", str(tmp_path))
+    assert kr.old_index_at("0123456789abcdef", "sess_a") == 0
+    idx = tmp_path / "session-index"
+    idx.mkdir()
+    h = "0123456789abcdef"
+    (idx / f"{h}.jsonl").write_text(
+        json.dumps({"op": "add", "sessionPath": f"{h}/sess_a", "at": 10}) + "\n"
+        "{torn line\n"
+        "\n"
+        + json.dumps({"op": "add", "sessionPath": f"{h}/sess_other", "at": 99}) + "\n"
+        + json.dumps({"op": "add", "sessionPath": f"{h}/sess_a", "at": 20}) + "\n"
+        "{also torn"
+    )
+    assert kr.old_index_at(h, "sess_a") == 20
+    assert kr.old_index_at(h, "sess_missing") == 0
+
+
+def test_no_sessions_under_old_root_is_a_clean_noop(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("KIRO_STORE_ROOT", str(tmp_path))
+    _mk_session(tmp_path, "/work/elsewhere", "sess_e", 1000)
+    import sys
+    monkeypatch.setattr(sys, "argv",
+                        ["kiro_relocate", "--old", "/work/nothing", "--new", "/work/moved"])
+    rc = kr.main()
+    assert rc == 0
+    assert "no sessions found under /work/nothing" in capsys.readouterr().out
+    # nothing moved, no new index created
+    assert (tmp_path / "sessions" / kr.cwd_hash("/work/elsewhere") / "sess_e").is_dir()
+    assert not (tmp_path / "sessions" / kr.cwd_hash("/work/moved")).exists()
