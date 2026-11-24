@@ -1415,5 +1415,142 @@ class InProcessMatchesSubprocessTests(unittest.TestCase):
         )
 
 
+class RunLoopTests(unittest.TestCase):
+    """run(): the load -> pick -> act loop, with the picker and execs stubbed."""
+
+    def _row(self):
+        return kl.rows_from_json([_json_row("s1")])[0]
+
+    def test_quit_returns_zero(self):
+        from unittest import mock
+        with mock.patch.object(kl, "load_rows_inprocess", return_value=([], "")), \
+             mock.patch.object(kl, "_run_picker", return_value=("quit", None)):
+            self.assertEqual(kl.run(all_cwds=False), 0)
+
+    def test_load_failure_prints_and_returns_one(self):
+        import io
+        from unittest import mock
+        err = io.StringIO()
+        with mock.patch.object(kl, "load_rows_inprocess",
+                               side_effect=SystemExit("kiro-cli exploded")), \
+             mock.patch.object(kl, "_run_picker") as picker, \
+             mock.patch.object(_sys, "stderr", err):
+            self.assertEqual(kl.run(all_cwds=False), 1)
+        picker.assert_not_called()
+        self.assertIn("kiro-cli exploded", err.getvalue())
+
+    def test_rescope_reloads_with_other_scope_then_quits(self):
+        from unittest import mock
+        load = mock.Mock(return_value=([], ""))
+        picker = mock.Mock(side_effect=[("rescope", True), ("quit", None)])
+        with mock.patch.object(kl, "load_rows_inprocess", load), \
+             mock.patch.object(kl, "_run_picker", picker):
+            self.assertEqual(kl.run(all_cwds=False), 0)
+        self.assertEqual([c.kwargs["all_cwds"] for c in load.call_args_list],
+                         [False, True])
+        # The second picker call starts in the widened scope.
+        self.assertTrue(picker.call_args_list[1].args[1])
+
+    def test_warning_is_passed_into_picker(self):
+        from unittest import mock
+        with mock.patch.object(kl, "load_rows_inprocess",
+                               return_value=([], "careful")), \
+             mock.patch.object(kl, "_run_picker",
+                               return_value=("quit", None)) as picker:
+            kl.run(all_cwds=False)
+        self.assertEqual(picker.call_args.kwargs["warning"], "careful")
+
+    def test_resume_and_new_dispatch_to_exec(self):
+        from unittest import mock
+        row = self._row()
+        with mock.patch.object(kl, "load_rows_inprocess", return_value=([row], "")), \
+             mock.patch.object(kl, "_run_picker", return_value=("resume", row)), \
+             mock.patch.object(kl, "exec_resume") as er, \
+             mock.patch.object(kl, "exec_new_session") as en:
+            kl.run(all_cwds=False)
+        er.assert_called_once_with(row)
+        en.assert_not_called()
+        with mock.patch.object(kl, "load_rows_inprocess", return_value=([], "")), \
+             mock.patch.object(kl, "_run_picker", return_value=("new", None)), \
+             mock.patch.object(kl, "exec_resume") as er, \
+             mock.patch.object(kl, "exec_new_session") as en:
+            kl.run(all_cwds=False)
+        en.assert_called_once_with()
+        er.assert_not_called()
+
+    def test_main_keyboard_interrupt_is_130(self):
+        from unittest import mock
+        with mock.patch.object(kl, "run", side_effect=KeyboardInterrupt):
+            self.assertEqual(kl.main([]), 130)
+
+    def test_main_returns_run_status(self):
+        from unittest import mock
+        with mock.patch.object(kl, "run", return_value=1):
+            self.assertEqual(kl.main([]), 1)
+
+
+class ParseIsoAndHumanizeBoundaryTests(unittest.TestCase):
+    def setUp(self):
+        self.now = _dt.datetime(2026, 10, 16, 12, 0, 0, tzinfo=_dt.timezone.utc)
+
+    def test_parse_iso_normalizes_z_and_naive_to_utc(self):
+        z = kl._parse_iso("2026-10-16T11:00:00Z")
+        naive = kl._parse_iso("2026-10-16T11:00:00")
+        self.assertEqual(z, naive)
+        self.assertEqual(naive.utcoffset(), _dt.timedelta(0))
+
+    def test_parse_iso_keeps_explicit_offset(self):
+        got = kl._parse_iso("2026-10-16T13:00:00+02:00")
+        self.assertEqual(got, _dt.datetime(2026, 10, 16, 11, 0, tzinfo=_dt.timezone.utc))
+
+    def test_parse_iso_blank_and_garbage_are_none(self):
+        self.assertIsNone(kl._parse_iso(""))
+        self.assertIsNone(kl._parse_iso("yesterday-ish"))
+
+    def test_offset_stamp_is_compared_in_real_time(self):
+        # 13:58+02:00 is 11:58Z, i.e. 2 minutes before now.
+        self.assertEqual(
+            kl.humanize_time("2026-10-16T13:58:00+02:00", now=self.now), "2m")
+
+    def test_unit_boundaries(self):
+        def h(**kw):
+            ts = (self.now - _dt.timedelta(**kw)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            return kl.humanize_time(ts, now=self.now)
+        self.assertEqual(h(seconds=59), "now")
+        self.assertEqual(h(seconds=60), "1m")
+        self.assertEqual(h(minutes=59, seconds=59), "59m")
+        self.assertEqual(h(minutes=60), "1h")
+        self.assertEqual(h(hours=23, minutes=59), "23h")
+        self.assertEqual(h(hours=24), "yesterday")
+        self.assertEqual(h(days=2), "Wed")   # 2026-10-14 is a Wednesday
+        self.assertEqual(h(days=6), "Sat")   # 2026-10-10
+        self.assertEqual(h(days=7), "Oct 9")  # a week out switches to a date
+
+    def test_previous_year_date_shows_year_even_when_recent(self):
+        now = _dt.datetime(2027, 1, 2, 12, 0, 0, tzinfo=_dt.timezone.utc)
+        self.assertEqual(
+            kl.humanize_time("2026-12-20T00:00:00Z", now=now), "Dec 20 2026")
+
+
+class WrapColsEdgeTests(unittest.TestCase):
+    def test_wide_characters_respect_column_width(self):
+        out = kl.wrap_cols("\u65e5\u672c\u8a9e\u30c6\u30b9\u30c8", 6)
+        self.assertTrue(all(kl.line_cols(l) <= 6 for l in out))
+        self.assertEqual("".join(out), "\u65e5\u672c\u8a9e\u30c6\u30b9\u30c8")
+
+    def test_long_token_after_short_word_starts_new_line(self):
+        out = kl.wrap_cols("ab /very/long/path", 6)
+        self.assertEqual(out[0], "ab")
+        self.assertTrue(all(kl.line_cols(l) <= 6 for l in out))
+        self.assertEqual("".join(out[1:]), "/very/long/path")
+
+    def test_exact_fit_is_one_line(self):
+        self.assertEqual(kl.wrap_cols("abc def", 7), ["abc def"])
+
+    def test_width_one_with_wide_char_terminates(self):
+        # A 2-column char cannot fit in 1 column; must not loop forever.
+        self.assertIsInstance(kl.wrap_cols("\u65e5", 1), list)
+
+
 if __name__ == "__main__":
     unittest.main()
