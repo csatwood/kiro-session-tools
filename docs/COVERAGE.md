@@ -2,23 +2,31 @@
 
 Line coverage was measured with the standard library only: `trace.Trace(count=1)` wraps the test run, and executable lines come from `trace._find_executable_linenos`; a line counts as hit if it executed at least once. `tests/test_kiro_relocate.py` is written for pytest (fixtures `tmp_path`, `monkeypatch`, `capsys`) and `python3 -m unittest discover` does not collect it, so the run used a ~30-line stdlib shim that supplies those three fixtures and calls each `test_*` function.
 
-Test counts: unittest discovery finds 218 tests (none from `test_kiro_relocate.py`); the shim runs the 14 relocate tests separately.
+Test counts: before the new tests, unittest discovery found 218 tests and the shim ran 14 relocate tests; after, 221 and 17. `test_kiro_relocate.py` is never collected by unittest.
+
+## Summary (before -> after)
+
+| Module | Executable | Hit before | % before | Hit after | % after |
+|---|---|---|---|---|---|
+| kiro_sessions.py | 274 | 178 | 65.0% | 187 | 68.2% |
+| kiro_relocate.py | 132 | 122 | 92.4% | 132 | 97.8% |
+| kiro_launch.py | 810 | 534 | 65.9% | 534 | 65.9% |
 
 ## kiro_sessions.py
 
-| Total executable lines | Lines hit | Coverage |
-|---|---|---|
-| 274 | 178 | 65.0% |
+| Total executable lines | Lines hit | Coverage | Before |
+|---|---|---|---|
+| 274 | 187 | 68.2% | 65.0% |
 
-Functions with uncovered lines:
+Functions with uncovered lines (after):
 
 - `labels_dir` (line 81): 2 of 2 lines uncovered
 - `_session_file` (line 97): 2 of 15 lines uncovered
-- `_write_label_file` (line 133): 6 of 19 lines uncovered
+- `_write_label_file` (line 133): 2 of 19 lines uncovered
 - `remove_label` (line 251): 1 of 7 lines uncovered
-- `_kiro_bin` (line 276): 5 of 5 lines uncovered
+- `_kiro_bin` (line 276): 1 of 5 lines uncovered
 - `_list_timeout` (line 291): 1 of 8 lines uncovered
-- `list_sessions` (line 306): 7 of 52 lines uncovered
+- `list_sessions` (line 306): 6 of 52 lines uncovered
 - `runner` (line 319): 2 of 2 lines uncovered
 - `_print_rows` (line 426): 12 of 12 lines uncovered
 - `cmd_label` (line 446): 10 of 13 lines uncovered
@@ -29,23 +37,21 @@ Functions with uncovered lines:
 
 ## kiro_relocate.py
 
-| Total executable lines | Lines hit | Coverage |
-|---|---|---|
-| 132 | 122 | 92.4% |
+| Total executable lines | Lines hit | Coverage | Before |
+|---|---|---|---|
+| 135 | 132 | 97.8% | 92.4% |
 
-Functions with uncovered lines:
+Functions with uncovered lines (after):
 
-- `plan` (line 50): 3 of 15 lines uncovered
-- `old_index_at` (line 104): 2 of 12 lines uncovered
-- `main` (line 123): 3 of 63 lines uncovered
+- `main` (line 126): 1 of 63 lines uncovered
 
 ## kiro_launch.py
 
-| Total executable lines | Lines hit | Coverage |
-|---|---|---|
-| 810 | 534 | 65.9% |
+| Total executable lines | Lines hit | Coverage | Before |
+|---|---|---|---|
+| 810 | 534 | 65.9% | 65.9% |
 
-Functions with uncovered lines:
+Functions with uncovered lines (after):
 
 - `collapse_home` (line 432): 1 of 11 lines uncovered
 - `project_name` (line 452): 1 of 8 lines uncovered
