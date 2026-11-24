@@ -447,5 +447,43 @@ class FindAndListTests(unittest.TestCase):
         self.assertEqual([r["sessionId"] for r in matched], ["sess_sync"])
 
 
+class GapCoverageTests(unittest.TestCase):
+    """Error paths: dot-prefixed ids, failed atomic write, kiro-cli missing."""
+
+    def test_dot_prefixed_session_ids_are_refused(self):
+        with TemporaryDirectory() as d:
+            for bad in (".", "..", ".hidden"):
+                with self.assertRaisesRegex(SystemExit, "not a valid file name"):
+                    ks.set_label(bad, "x", Path(d))
+            self.assertEqual(list(Path(d).iterdir()), [])
+
+    def test_failed_write_cleans_up_temp_file_and_keeps_old_label(self):
+        with TemporaryDirectory() as d:
+            directory = Path(d)
+            ks.set_label("sess_a", "original", directory)
+            real_replace = os.replace
+
+            def boom(*a, **k):
+                raise OSError("disk full")
+
+            os.replace = boom
+            try:
+                with self.assertRaises(OSError):
+                    ks.set_label("sess_a", "new", directory)
+            finally:
+                os.replace = real_replace
+            self.assertEqual([p.name for p in directory.iterdir()], ["sess_a.json"])
+            self.assertEqual(ks.load_labels(directory), {"sess_a": "original"})
+
+    def test_missing_kiro_cli_raises_unavailable(self):
+        real_which = ks.shutil.which
+        ks.shutil.which = lambda name: None
+        try:
+            with self.assertRaisesRegex(ks.KiroUnavailable, "kiro-cli not found"):
+                ks.list_sessions(False)
+        finally:
+            ks.shutil.which = real_which
+
+
 if __name__ == "__main__":
     unittest.main()
