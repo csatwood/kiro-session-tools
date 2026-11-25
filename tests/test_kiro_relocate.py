@@ -5,10 +5,17 @@ tmp dir. Covers the three things that can silently corrupt a relocate: the hash
 must match Kiro's, the session.json workspace paths must be rewritten, and the
 new index must list the moved sessions.
 """
+import contextlib
+import inspect
+import io
 import json
 import os
 import hashlib
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
 
 import importlib.util
 
@@ -16,6 +23,41 @@ MOD = Path(__file__).resolve().parent.parent / "kiro_relocate.py"
 spec = importlib.util.spec_from_file_location("kiro_relocate", MOD)
 kr = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(kr)
+
+
+def load_tests(loader, tests, pattern):
+    """Run the same fixture-based tests under standard-library discovery."""
+    def run(test):
+        with contextlib.ExitStack() as stack:
+            tmp_path = Path(stack.enter_context(TemporaryDirectory()))
+            stdout, stderr = io.StringIO(), io.StringIO()
+            stack.enter_context(contextlib.redirect_stdout(stdout))
+            stack.enter_context(contextlib.redirect_stderr(stderr))
+
+            def readouterr():
+                result = SimpleNamespace(out=stdout.getvalue(), err=stderr.getvalue())
+                for stream in (stdout, stderr):
+                    stream.seek(0)
+                    stream.truncate()
+                return result
+
+            fixtures = {
+                "tmp_path": tmp_path,
+                "monkeypatch": SimpleNamespace(
+                    setenv=lambda key, value: stack.enter_context(
+                        patch.dict(os.environ, {key: value})),
+                    setattr=lambda obj, name, value: stack.enter_context(
+                        patch.object(obj, name, value)),
+                ),
+                "capsys": SimpleNamespace(readouterr=readouterr),
+            }
+            test(**{name: fixtures[name] for name in inspect.signature(test).parameters})
+
+    for name, test in sorted(globals().items()):
+        if name.startswith("test_") and inspect.isfunction(test):
+            tests.addTest(unittest.FunctionTestCase(lambda test=test: run(test),
+                                                    description=name))
+    return tests
 
 
 def _mk_session(root: Path, cwd: str, sess_name: str, at_ms: int):

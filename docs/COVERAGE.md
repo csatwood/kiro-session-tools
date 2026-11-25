@@ -2,7 +2,7 @@
 
 Line coverage was measured with the standard library only: `trace.Trace(count=1)` wraps the test run, and executable lines come from `trace._find_executable_linenos`; a line counts as hit if it executed at least once. `tests/test_kiro_relocate.py` is written for pytest (fixtures `tmp_path`, `monkeypatch`, `capsys`) and `python3 -m unittest discover` does not collect it, so the run used a ~30-line stdlib shim that supplies those three fixtures and calls each `test_*` function.
 
-Test counts: before the new tests, unittest discovery found 218 tests and the shim ran 14 relocate tests; after, 221 and 17. `test_kiro_relocate.py` is never collected by unittest.
+Test counts for that coverage run: before the new tests, unittest discovery found 218 tests and the shim ran 14 relocate tests; after, 221 and 17. The relocate module now provides a `load_tests` hook, so unittest discovery includes all 17 relocate tests without a separate shim.
 
 ## Summary (before -> after)
 
