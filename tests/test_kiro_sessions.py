@@ -1,7 +1,7 @@
 """Tests for kiro_sessions.py: the sidecar label index.
 
-Synthetic fixtures only. Session enumeration is exercised through an injected
-runner, never a real kiro-cli call, so the suite is hermetic and does not depend
+Synthetic fixtures only. Session enumeration uses injected runners or mocks,
+never a real kiro-cli call, so the suite is hermetic and does not depend
 on the developer's own Kiro session store.
 """
 
@@ -12,8 +12,11 @@ import subprocess
 import sys as _sys
 import types
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 COVERS = ["kiro_sessions.py"]
 
@@ -445,6 +448,62 @@ class FindAndListTests(unittest.TestCase):
         matched = [r for r in rows
                    if q in (r["label"] or "").lower() or q in r["title"].lower()]
         self.assertEqual([r["sessionId"] for r in matched], ["sess_sync"])
+
+
+class CliTests(unittest.TestCase):
+    def setUp(self):
+        tmp = TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        directory = Path(tmp.name) / "labels"
+        environment = patch.dict(os.environ, {"KIRO_SESSION_LABELS_PATH": str(directory)})
+        environment.start()
+        self.addCleanup(environment.stop)
+        listing = patch.object(
+            ks, "list_sessions", return_value=[
+                _session("sess_labeled", title="Original title"),
+                _session("sess_untitled", title=""),
+            ],
+        )
+        self.list_sessions = listing.start()
+        self.addCleanup(listing.stop)
+
+    def run_cli(self, *args):
+        output = StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(ks.main(list(args)), 0)
+        return output.getvalue()
+
+    def test_label_lifecycle_reports_missing_and_removed_labels(self):
+        command = ("label", "sess_labeled")
+        with self.assertRaisesRegex(SystemExit, "a label is required"):
+            self.run_cli(*command)
+        self.assertEqual(
+            self.run_cli(*command, "Planning"),
+            'labeled sess_labeled -> "Planning"\n    kiro-cli chat --resume-id sess_labeled\n',
+        )
+        self.assertEqual(ks.load_labels(), {"sess_labeled": "Planning"})
+        self.assertEqual(self.run_cli(*command, "--remove"), "removed label for sess_labeled\n")
+        self.assertEqual(self.run_cli(*command, "--remove"), "no label was set for sess_labeled\n")
+        self.assertEqual(ks.load_labels(), {})
+
+    def test_find_matches_name_title_and_id_and_reports_no_match(self):
+        self.run_cli("label", "sess_labeled", "Planning")
+        for query in ("PLANNING", "ORIGINAL", "SESS_LABELED"):
+            with self.subTest(query=query):
+                self.list_sessions.reset_mock()
+                rows = json.loads(self.run_cli("find", query, "--all-cwds", "--json"))
+                self.assertEqual([row["sessionId"] for row in rows], ["sess_labeled"])
+                self.assertEqual(rows[0]["name"], "Planning")
+                self.list_sessions.assert_called_once_with(all_cwds=True)
+        self.assertEqual(self.run_cli("find", "absent"), "(no matching sessions)\n")
+
+    def test_list_can_hide_unlabeled_sessions(self):
+        self.run_cli("label", "sess_labeled", "Planning")
+        self.assertIn("(untitled)\n", self.run_cli("list"))
+        output = self.run_cli("list", "--labeled-only")
+        self.assertIn("Planning\n    [label]", output)
+        self.assertIn("kiro-cli chat --resume-id sess_labeled", output)
+        self.assertNotIn("sess_untitled", output)
 
 
 class GapCoverageTests(unittest.TestCase):
