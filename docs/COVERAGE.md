@@ -6,11 +6,13 @@ Test counts: before the new tests, unittest discovery found 218 tests and the sh
 
 ## Summary (before -> after)
 
-| Module | Executable | Hit before | % before | Hit after | % after |
-|---|---|---|---|---|---|
-| kiro_sessions.py | 274 | 178 | 65.0% | 187 | 68.2% |
-| kiro_relocate.py | 132 | 122 | 92.4% | 132 | 97.8% |
-| kiro_launch.py | 810 | 534 | 65.9% | 534 | 65.9% |
+| Module | Executable before | Hit before | % before | Executable after | Hit after | % after |
+|---|---|---|---|---|---|---|
+| kiro_sessions.py | 274 | 178 | 65.0% | 274 | 187 | 68.2% |
+| kiro_relocate.py | 132 | 122 | 92.4% | 135 | 132 | 97.8% |
+| kiro_launch.py | 810 | 534 | 65.9% | 810 | 534 | 65.9% |
+
+`kiro_relocate.py` gained 3 executable lines between the two measurements (the `isinstance` guards added to `plan()`), so its executable count is 132 before and 135 after.
 
 ## kiro_sessions.py
 
