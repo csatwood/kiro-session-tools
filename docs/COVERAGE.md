@@ -6,11 +6,13 @@ Test counts: before the new tests, unittest discovery found 218 tests and the sh
 
 ## Summary (before -> after)
 
-| Module | Executable | Hit before | % before | Hit after | % after |
-|---|---|---|---|---|---|
-| kiro_sessions.py | 274 | 178 | 65.0% | 187 | 68.2% |
-| kiro_relocate.py | 132 | 122 | 92.4% | 132 | 97.8% |
-| kiro_launch.py | 810 | 534 | 65.9% | 534 | 65.9% |
+| Module | Executable before | Hit before | % before | Executable after | Hit after | % after |
+|---|---|---|---|---|---|---|
+| kiro_sessions.py | 274 | 178 | 65.0% | 274 | 187 | 68.2% |
+| kiro_relocate.py | 132 | 122 | 92.4% | 135 | 132 | 97.8% |
+| kiro_launch.py | 810 | 534 | 65.9% | 810 | 554 | 68.4% |
+
+`kiro_relocate.py` gained 3 executable lines between the two measurements (the `isinstance` guards added to `plan()`), so its executable count is 132 before and 135 after.
 
 ## kiro_sessions.py
 
@@ -49,7 +51,9 @@ Functions with uncovered lines (after):
 
 | Total executable lines | Lines hit | Coverage | Before |
 |---|---|---|---|
-| 810 | 534 | 65.9% | 65.9% |
+| 810 | 554 | 68.4% | 65.9% |
+
+`tests/test_kiro_launch_edges.py` (8 tests) added 20 hit lines: `write_label` timeout and OSError branches, `exec_new_session`, and `_import_kiro_sessions` (load, cache, unloadable provider). Test counts: unittest discovery 221 -> 229; the relocate shim still runs 17.
 
 Functions with uncovered lines (after):
 
@@ -57,9 +61,6 @@ Functions with uncovered lines (after):
 - `project_name` (line 452): 1 of 8 lines uncovered
 - `humanize_time` (line 489): 1 of 26 lines uncovered
 - `build_list_slots` (line 726): 1 of 15 lines uncovered
-- `_import_kiro_sessions` (line 901): 13 of 13 lines uncovered
-- `write_label` (line 959): 5 of 20 lines uncovered
-- `exec_new_session` (line 1053): 2 of 2 lines uncovered
 - `_build_color_map` (line 1150): 29 of 29 lines uncovered
 - `_run_picker` (line 1195): 221 of 221 lines uncovered
 - `inner` (line 1204): 218 of 218 lines uncovered
