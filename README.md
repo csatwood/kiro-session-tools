@@ -5,11 +5,13 @@ over the model-generated auto-titles Kiro's native `--sessions` dashboard shows.
 
 ## Compatibility
 
-Verified against Kiro CLI 2.25.0. This tooling reads Kiro's session store
-layout (sessions keyed by `sha256(absolute_cwd)[:16]`), which is observed
-behavior, not a documented, stable API. A future Kiro release could change it
-and break the store-level features (notably `kiro_relocate.py`). The label
-layer and picker degrade gracefully; relocate is the most layout-dependent.
+Verified against Kiro CLI 2.25.0. Official docs now describe Kiro CLI 3.0.0 and
+later; this repo has **not** been re-verified against 3.x in this update. This
+tooling reads Kiro's session store layout (sessions keyed by
+`sha256(absolute_cwd)[:16]`), which is observed behavior, not a documented,
+stable API. A future Kiro release could change it and break the store-level
+features (notably `kiro_relocate.py`). The label layer and picker degrade
+gracefully; relocate is the most layout-dependent.
 
 ## Components
 
@@ -72,8 +74,19 @@ cp -a ~/.kiro/sessions ~/.kiro/sessions.bak && cp -a ~/.kiro/session-index ~/.ki
 
 ## Install / use
 
-Requires Python 3.10+ and `kiro-cli` on `PATH`. No third-party dependencies
-(stdlib `curses` only).
+Requires Python 3.10+ and the official **`kiro-cli`** binary on `PATH`. There
+are **no third-party Python runtime dependencies** (stdlib `curses` only;
+`requirements.txt` is intentionally empty of packages).
+
+Install `kiro-cli` from the [official Kiro distribution](https://kiro.dev/docs/getting-started/installation/)
+(downloads at [kiro.dev/downloads](https://kiro.dev/downloads/), install script
+at [cli.kiro.dev](https://cli.kiro.dev/install), or the Homebrew cask
+`brew install --cask kiro-cli`).
+
+> **Warning:** Do **not** run `pip install kiro-cli`. The PyPI project of that
+> name is an unrelated backend-scaffolding tool. If that package's console
+> script lands earlier on your `PATH`, these tools will invoke it instead of
+> the official binary.
 
 ```sh
 python3 kiro_launch.py          # the picker, scoped to the current directory
@@ -94,12 +107,16 @@ this checkout):
 
 ## Tests
 
+Runtime needs no `pip install`. For the test suite, install the pinned
+dev dependency:
+
 ```sh
+pip install -r requirements-dev.txt
 python3 -m pytest tests/
 ```
 
 The curses UI itself is not unit-tested, because it needs a real terminal. All
-the pure logic it calls is tested.
+the pure logic it calls is tested. Line-coverage notes: [docs/COVERAGE.md](docs/COVERAGE.md).
 
 ## License
 

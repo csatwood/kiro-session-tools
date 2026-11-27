@@ -1,0 +1,3 @@
+# Dev/test dependencies only. Runtime stays standard-library only.
+# Install: pip install -r requirements-dev.txt
+pytest==9.2.0

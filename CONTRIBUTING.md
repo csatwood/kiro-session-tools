@@ -12,16 +12,20 @@ it that way.
    cd kiro-session-tools
    ```
 
-2. Create a virtual environment (only `pytest` is needed, and only for tests):
+2. Create a virtual environment and install **dev** dependencies (pytest only):
 
    ```bash
    python3 -m venv .venv
    source .venv/bin/activate
-   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    ```
 
-   The tools themselves have no third-party runtime dependencies: Python 3.10+
-   standard library plus `kiro-cli` on `PATH`.
+   There are **no third-party runtime dependencies**. `requirements.txt` lists
+   none on purpose: the tools use the Python 3.10+ standard library only, plus
+   the official `kiro-cli` binary on `PATH`
+   ([install docs](https://kiro.dev/docs/getting-started/installation/)).
+
+   Do **not** `pip install kiro-cli` — that PyPI package is a different project.
 
 ## Running the tests
 
@@ -42,3 +46,5 @@ or `kiro-cli`.
   launcher never reads or writes the label store or Kiro's own store directly.
 - Match the surrounding Python style. Snake_case module names (toolchain
   convention), four-space indent.
+- Keep the runtime standard-library only; pin any new **dev** tools with an
+  exact version in `requirements-dev.txt`.

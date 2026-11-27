@@ -1,71 +1,62 @@
 # Coverage report
 
-Line coverage was measured with the standard library only: `trace.Trace(count=1)` wraps the test run, and executable lines come from `trace._find_executable_linenos`; a line counts as hit if it executed at least once. `tests/test_kiro_relocate.py` is written for pytest (fixtures `tmp_path`, `monkeypatch`, `capsys`) and `python3 -m unittest discover` does not collect it, so the run used a ~30-line stdlib shim that supplies those three fixtures and calls each `test_*` function.
+Line coverage was measured with the standard library only: `trace.Trace(count=1)` wraps a `python3 -m unittest discover -s tests` run (249 tests), and executable lines come from `trace._find_executable_linenos`; a line counts as hit if it executed at least once. After PR #8, `tests/test_kiro_relocate.py` provides a `load_tests` hook so unittest discovery collects all relocate tests (no separate fixture shim).
 
-Test counts for that coverage run: before the new tests, unittest discovery found 218 tests and the shim ran 14 relocate tests; after, 221 and 17. The relocate module now provides a `load_tests` hook, so unittest discovery includes all 17 relocate tests without a separate shim.
+This refresh reflects `main` at the post–PR #8 tree (sessions CLI coverage from PR #7, launch edge paths from PR #6, relocate discovery from PR #8). Figures are absolute current coverage, not a before/after delta.
 
-## Summary (before -> after)
+## Summary
 
-| Module | Executable before | Hit before | % before | Executable after | Hit after | % after |
-|---|---|---|---|---|---|---|
-| kiro_sessions.py | 274 | 178 | 65.0% | 274 | 187 | 68.2% |
-| kiro_relocate.py | 132 | 122 | 92.4% | 135 | 132 | 97.8% |
-| kiro_launch.py | 810 | 534 | 65.9% | 810 | 554 | 68.4% |
-
-`kiro_relocate.py` gained 3 executable lines between the two measurements (the `isinstance` guards added to `plan()`), so its executable count is 132 before and 135 after.
+| Module | Executable | Hit | Coverage |
+|---|---|---|---|
+| kiro_sessions.py | 274 | 259 | 94.5% |
+| kiro_relocate.py | 135 | 132 | 97.8% |
+| kiro_launch.py | 810 | 554 | 68.4% |
 
 ## kiro_sessions.py
 
-| Total executable lines | Lines hit | Coverage | Before |
-|---|---|---|---|
-| 274 | 187 | 68.2% | 65.0% |
+| Total executable lines | Lines hit | Coverage |
+|---|---|---|
+| 274 | 259 | 94.5% |
 
-Functions with uncovered lines (after):
+Functions with uncovered lines:
 
-- `labels_dir` (line 81): 2 of 2 lines uncovered
-- `_session_file` (line 97): 2 of 15 lines uncovered
-- `_write_label_file` (line 133): 2 of 19 lines uncovered
-- `remove_label` (line 251): 1 of 7 lines uncovered
-- `_kiro_bin` (line 276): 1 of 5 lines uncovered
-- `_list_timeout` (line 291): 1 of 8 lines uncovered
-- `list_sessions` (line 306): 6 of 52 lines uncovered
-- `runner` (line 319): 2 of 2 lines uncovered
-- `_print_rows` (line 426): 12 of 12 lines uncovered
-- `cmd_label` (line 446): 10 of 13 lines uncovered
-- `cmd_find` (line 463): 12 of 12 lines uncovered
-- `cmd_list` (line 479): 7 of 7 lines uncovered
-- `build_parser` (line 489): 27 of 27 lines uncovered
-- `main` (line 530): 2 of 2 lines uncovered
+- `_session_file` (line 97): 2 of 16 lines uncovered
+- `_write_label_file` (line 133): 2 of 20 lines uncovered
+- `remove_label` (line 251): 1 of 8 lines uncovered
+- `_kiro_bin` (line 276): 1 of 6 lines uncovered
+- `_list_timeout` (line 291): 1 of 9 lines uncovered
+- `list_sessions` (line 306): 6 of 53 lines uncovered
+- `runner` (line 319): 3 of 3 lines uncovered
 
 ## kiro_relocate.py
 
-| Total executable lines | Lines hit | Coverage | Before |
-|---|---|---|---|
-| 135 | 132 | 97.8% | 92.4% |
+| Total executable lines | Lines hit | Coverage |
+|---|---|---|
+| 135 | 132 | 97.8% |
 
-Functions with uncovered lines (after):
+Functions with uncovered lines:
 
-- `main` (line 126): 1 of 63 lines uncovered
+- `main` (line 126): 1 of 64 lines uncovered
 
 ## kiro_launch.py
 
-| Total executable lines | Lines hit | Coverage | Before |
-|---|---|---|---|
-| 810 | 554 | 68.4% | 65.9% |
+| Total executable lines | Lines hit | Coverage |
+|---|---|---|
+| 810 | 554 | 68.4% |
 
-`tests/test_kiro_launch_edges.py` (8 tests) added 20 hit lines: `write_label` timeout and OSError branches, `exec_new_session`, and `_import_kiro_sessions` (load, cache, unloadable provider). Test counts: unittest discovery 221 -> 229; the relocate shim still runs 17.
+The curses picker loop (`_run_picker` and its nested helpers) is intentionally untested: it needs a real terminal. Pure helpers the loop calls remain covered.
 
-Functions with uncovered lines (after):
+Functions with uncovered lines:
 
-- `collapse_home` (line 432): 1 of 11 lines uncovered
-- `project_name` (line 452): 1 of 8 lines uncovered
-- `humanize_time` (line 489): 1 of 26 lines uncovered
-- `build_list_slots` (line 726): 1 of 15 lines uncovered
-- `_build_color_map` (line 1150): 29 of 29 lines uncovered
-- `_run_picker` (line 1195): 221 of 221 lines uncovered
-- `inner` (line 1204): 218 of 218 lines uncovered
-- `recompute` (line 1224): 2 of 2 lines uncovered
-- `safe_addstr` (line 1234): 8 of 8 lines uncovered
-- `_prompt_line` (line 1249): 29 of 29 lines uncovered
-- `_select_entry` (line 1290): 10 of 10 lines uncovered
-- `_edit_label` (line 1309): 26 of 26 lines uncovered
+- `collapse_home` (line 432): 1 of 12 lines uncovered
+- `project_name` (line 452): 1 of 9 lines uncovered
+- `humanize_time` (line 489): 1 of 27 lines uncovered
+- `build_list_slots` (line 726): 1 of 16 lines uncovered
+- `_build_color_map` (line 1150): 29 of 30 lines uncovered
+- `_run_picker` (line 1195): 221 of 222 lines uncovered
+- `inner` (line 1204): 219 of 219 lines uncovered
+- `recompute` (line 1224): 3 of 3 lines uncovered
+- `safe_addstr` (line 1234): 9 of 9 lines uncovered
+- `_prompt_line` (line 1249): 30 of 30 lines uncovered
+- `_select_entry` (line 1290): 11 of 11 lines uncovered
+- `_edit_label` (line 1309): 27 of 27 lines uncovered
